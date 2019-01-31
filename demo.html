@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Demo</title>
+        <script src = "http://d3js.org/d3.v4.min.js" charset="utf-8"></script>
+        <script src="http://d3js.org/topojson.v1.min.js"></script>
+        <script src="https://unpkg.com/topojson-client@3"></script>
+        <script src="https://d3js.org/d3-geo.v1.min.js"></script>
+        <script src="https://d3js.org/d3-queue.v2.min.js"></script>
+        <script src="chroniton.js"></script>
+        <link href="chroniton.css" rel="stylesheet">
+    </head>
+    <style>
+
+            .states {
+              fill: none;
+              stroke: #fff;
+              stroke-linejoin: round;
+            }
+
+            #slider {
+      position: absolute;
+      left: 50%;
+      margin-left: -300px;
+      bottom: 10px;
+      width: 600px;
+      height: 50px;
+    }
+            
+    </style>
+
+    <body>
+        <div id = "slider"> </div>
+        <script>
+            var width = window.innerWidth, height = window.innerHeight;
+            var projection = d3.geoAlbers()
+                .scale(1000)
+                .translate([width/2, height/2]);
+            var path = d3.geoPath()
+                .projection(projection);
+            var color = d3.scaleThreshold()
+                .domain([0.02, 0.04, 0.06, 0.08, 0.10])
+                .range(["#f2f0f7", "#dadaeb", "#bcbddc", "#9e9ac8", "#756bb1", "#54278f"]);
+            var svg = d3.select("body").append("svg")
+                .attr("width", width)
+                .attr("height", height);
+            d3.queue()
+                .defer(d3.json, "https://gist.githubusercontent.com/mbostock/4090846/raw/07e73f3c2d21558489604a0bc434b3a5cf41a867/us.json")
+                .defer(d3.tsv, "https://raw.githubusercontent.com/mjfoster83/d3-workshop/master/d3_part4_mappingData/data/us_unemployment_2008.tsv")
+                .await(ready);
+            
+            function ready(error, us, unemployment) {
+                if (error) throw error;
+
+                var rateById = {};
+                unemployment.forEach(function(d) {
+                    rateById[d.id] = +d.rate;
+                });
+
+                svg.append("g")
+                    .attr("class", "counties")
+                  .selectAll("path")
+                    .data(topojson.feature(us, us.objects.counties).features)
+                  .enter().append("path")
+                    .attr("d", path)
+                    .style("fill", function(d) {
+                        return color(rateById[d.id]);
+                    });
+
+                svg.append("path")
+                    .datum(topojson.mesh(us, us.objects.states, function(a,b) {
+                        return a.id !== b.id;
+                    }))
+                    .attr("class", "states")
+                    .attr("d", path);
+
+                d3.select("#slider")
+                    .call(
+                        chroniton()
+                          .domain([new Date(2001,1,1), new Date(2011,1,1)])
+                          .labelFormat(function(date) {
+                              return Math.ceil((date.getFullYear()) / 10) *10;
+                          })
+                          .width(600)
+                    );
+        
+
+                
+                    
+            }
+        </script>
+    </body>
+</html>
